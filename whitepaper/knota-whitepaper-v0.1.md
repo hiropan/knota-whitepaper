@@ -482,24 +482,35 @@ This separation is intended to reduce scoring drift and improve reproducibility.
 
 The MVP begins with an interpretable, domain-independent learner model.
 
-For learner $u$, concept $c$, cognitive level $l$, and time $t$:
+For learner $u$, concept $c$, cognitive level $l$, and time $t$, the learner state is represented as:
 
-$$
+```math
 S_{u,c,l,t} \in [0,1]
-$$
+```
 
-where $S_{u,c,l,t}$ represents the estimated learner state.
+where:
+
+- $u$ represents the learner
+- $c$ represents the concept
+- $l$ represents the cognitive level
+- $t$ represents time
+- $S_{u,c,l,t}$ represents the estimated learner state
+
+The learner state should not be interpreted as a direct measurement of true understanding.
+
+It represents the system's current estimate based on accumulated assessment evidence.
 
 ---
 
 # 11. Assessment Evidence
 
-For assessment item $q$, Knota derives an evidence value $E_q$.
+Each assessment item $q$ produces structured evidence about learner capability.
 
-A simple formulation is:
+For the initial model, assessment evidence is defined as:
 
-$$
-E_q =
+```math
+E_q
+=
 R_q
 \times
 D_q
@@ -507,85 +518,151 @@ D_q
 F_q
 \times
 C_q
-$$
+```
 
 where:
 
-- $R_q$ = rubric score
+- $R_q$ = rubric-based performance
 - $D_q$ = difficulty adjustment
 - $F_q$ = question-format adjustment
-- $C_q$ = evaluator confidence adjustment
+- $C_q$ = evaluator-confidence adjustment
 
-The resulting evidence value is clipped to:
+The final evidence value is constrained to the interval:
 
-$$
+```math
 E_q \in [0,1]
-$$
+```
+
+If the raw calculation exceeds the interval, it can be clipped:
+
+```math
+E_q
+=
+\min
+\left(
+1,
+\max(0,E_q)
+\right)
+```
+
+This evidence function is intentionally simple and should be treated as an initial engineering baseline.
 
 ---
 
 ## 11.1 Rubric Score
 
-If $m$ of $n$ rubric criteria are satisfied:
+For a question with $n$ rubric criteria, suppose the learner satisfies $m$ criteria.
 
-$$
+The rubric score is:
+
+```math
 R_q = \frac{m}{n}
-$$
+```
 
-For example:
+For example, if three of four rubric criteria are satisfied:
 
-$$
-R_q = \frac{3}{4} = 0.75
-$$
+```math
+R_q
+=
+\frac{3}{4}
+=
+0.75
+```
+
+More advanced versions may assign different weights to individual rubric criteria.
+
+For weighted rubric criteria:
+
+```math
+R_q
+=
+\frac{
+\sum_{i=1}^{n} w_i r_i
+}{
+\sum_{i=1}^{n} w_i
+}
+```
+
+where:
+
+- $w_i$ is the importance weight of rubric criterion $i$
+- $r_i \in [0,1]$ represents the degree to which criterion $i$ was satisfied
 
 ---
 
 # 12. Difficulty Adjustment
 
-Question difficulty modifies the strength of the evidence.
+Question difficulty modifies the evidential strength of a response.
 
-A simple initial formulation is:
+Let:
 
-$$
-D_q =
-1 + \beta(d_q - 0.5)
-$$
+```math
+d_q \in [0,1]
+```
 
-where:
+represent estimated item difficulty.
 
-- $d_q \in [0,1]$
-- $\beta$ controls the magnitude of difficulty adjustment
+A simple initial difficulty adjustment is:
 
-For example, with:
+```math
+D_q
+=
+1
++
+\beta
+\left(
+d_q - 0.5
+\right)
+```
 
-$$
+where $\beta$ controls how strongly question difficulty affects evidence.
+
+For example, if:
+
+```math
 \beta = 0.4
-$$
+```
 
-a relatively difficult item with:
+and:
 
-$$
+```math
 d_q = 0.8
-$$
+```
 
-produces:
+then:
 
-$$
-D_q = 1 + 0.4(0.8 - 0.5) = 1.12
-$$
+```math
+D_q
+=
+1
++
+0.4
+\left(
+0.8 - 0.5
+\right)
+=
+1.12
+```
 
-These values are provisional engineering parameters and should later be empirically calibrated.
+This means that performance on a relatively difficult question may provide slightly stronger evidence than equivalent performance on an easier question.
+
+However, this formulation is only a provisional approximation.
+
+A future learner model should estimate difficulty from observed learner behaviour rather than relying solely on generated difficulty labels.
 
 ---
 
 # 13. Question Format Adjustment
 
-The MVP may initialise question-format weights manually.
+Question format affects the evidential strength of an assessment.
+
+The MVP may initialise format adjustment values manually.
 
 For example:
 
-$$
-F_q =
+```math
+F_q
+=
 \begin{cases}
 0.70 & \text{Multiple Choice} \\
 0.90 & \text{Short Answer} \\
@@ -593,69 +670,91 @@ F_q =
 1.10 & \text{Case Analysis} \\
 1.20 & \text{Design Challenge}
 \end{cases}
-$$
+```
 
-These values should not be interpreted as universal constants.
+These values are not intended as universal cognitive constants.
 
-They are initial priors intended for later empirical calibration.
+They are provisional priors.
+
+The hypothesis is that different question formats provide different levels of evidence about learner capability.
+
+For example:
+
+- multiple-choice answers may be influenced by guessing
+- short-answer questions require active retrieval
+- explanation questions require semantic reconstruction
+- case questions require contextual application
+- design challenges may provide stronger evidence of transfer and application
+
+Future versions should learn or statistically calibrate these effects from real interaction data.
 
 ---
 
 # 14. Forgetting and Time
 
-Skill evidence should weaken over time if it is not revalidated.
+Learner-state estimates should account for the fact that evidence becomes less reliable as time passes without reassessment.
 
-Before processing new evidence:
+Before incorporating new evidence, the previous learner state is decayed according to elapsed time:
 
-$$
+```math
 S^{-}_{u,c,l,t}
 =
 S_{u,c,l,t-1}
 e^{-\lambda \Delta t}
-$$
+```
 
 where:
 
 - $\lambda$ = forgetting rate
-- $\Delta t$ = elapsed time since relevant evidence
+- $\Delta t$ = elapsed time since the previous relevant assessment
+- $S^{-}_{u,c,l,t}$ = learner-state estimate after time decay but before incorporating new evidence
 
-The MVP may initially use a globally shared forgetting rate:
+The MVP may initially use a single global forgetting parameter:
 
-$$
-\lambda_{\text{global}}
-$$
+```math
+\lambda_{\mathrm{global}}
+```
 
-Future versions may estimate learner-specific or concept-specific parameters:
+Future versions may estimate learner-specific forgetting:
 
-$$
+```math
 \lambda_u
-$$
+```
 
-or:
+concept-specific forgetting:
 
-$$
+```math
+\lambda_c
+```
+
+or learner-concept-specific forgetting:
+
+```math
 \lambda_{u,c}
-$$
+```
+
+This allows the system to represent differences in forgetting behaviour across learners and knowledge domains.
 
 ---
 
 # 15. Learner-State Update
 
-The updated learner state is defined as:
+After time decay, the learner state is updated using the latest assessment evidence.
 
-$$
+The update equation is:
+
+```math
 S_{u,c,l,t}
 =
 (1-\alpha)
 S^{-}_{u,c,l,t}
 +
 \alpha E_q
-$$
+```
 
-Substituting the forgetting function gives:
+Substituting the time-decay equation gives:
 
-$$
-\boxed{
+```math
 S_{u,c,l,t}
 =
 (1-\alpha)
@@ -663,14 +762,17 @@ S_{u,c,l,t-1}
 e^{-\lambda \Delta t}
 +
 \alpha E_q
-}
-$$
+```
 
 where:
 
-- $\alpha$ determines how strongly new evidence affects the learner-state estimate
-- $\lambda$ determines the effect of time
-- $E_q$ represents the latest assessment evidence
+- $\alpha \in [0,1]$ controls the influence of new evidence
+- $\lambda$ controls forgetting over time
+- $E_q$ represents evidence from the current assessment
+
+A larger $\alpha$ makes the learner-state estimate respond more quickly to new evidence.
+
+A smaller $\alpha$ makes the estimate more stable and dependent on historical evidence.
 
 This equation is intentionally simple.
 
@@ -678,48 +780,59 @@ It serves as a **general-purpose learner-model baseline**, not as a claim of a v
 
 ---
 
-# 16. Confidence
+# 16. Confidence and Uncertainty
 
-Knota maintains confidence separately from the estimated learner state.
+Knota maintains confidence separately from the estimated Skill Score.
+
+A high Skill Score with little evidence should not be treated as equivalent to the same score supported by repeated assessments.
 
 A simple evidence-count-based confidence function is:
 
-$$
+```math
 Conf_{u,c,l}
 =
-1 - e^{-kn}
-$$
+1
+-
+e^{-kn}
+```
 
 where:
 
-- $n$ is the number of relevant assessments
-- $k$ controls how quickly confidence increases
+- $n$ = number of relevant assessments
+- $k$ = confidence-growth parameter
 
-A more robust version can include evidence inconsistency:
+As evidence accumulates, confidence approaches 1.
 
-$$
+A more advanced version may account for inconsistency in observed evidence:
+
+```math
 Conf_{u,c,l}
 =
-(1-e^{-kn})(1-\sigma_E)
-$$
+\left(
+1-e^{-kn}
+\right)
+\left(
+1-\sigma_E
+\right)
+```
 
-where $\sigma_E$ represents variability in observed evidence.
+where $\sigma_E$ represents normalised variability in assessment evidence.
 
-This allows Knota to distinguish between:
+This allows Knota to distinguish:
 
 ```text
 Skill: 80
 Confidence: Low
 ```
 
-and:
+from:
 
 ```text
 Skill: 80
 Confidence: High
 ```
 
-This distinction is central to Knota's design.
+Confidence is therefore part of the learner-state representation rather than merely a user-interface decoration.
 
 ---
 
@@ -729,31 +842,41 @@ The multidimensional learner state should remain the authoritative internal repr
 
 However, the user interface may require a single summary score.
 
-For concept $c$:
+For learner $u$ and concept $c$, an aggregate Skill Score can be defined as:
 
-$$
+```math
 Skill_{u,c}
 =
-\sum_l w_l S_{u,c,l}
-$$
+\sum_l
+w_l
+S_{u,c,l}
+```
+
+where $w_l$ represents the weight assigned to cognitive level $l$.
 
 An example weighting is:
 
-$$
+```math
 Skill_{u,c}
 =
-0.15S_{\text{Recall}}
+0.15S_{\mathrm{Recall}}
 +
-0.30S_{\text{Understand}}
+0.30S_{\mathrm{Understand}}
 +
-0.35S_{\text{Apply}}
+0.35S_{\mathrm{Apply}}
 +
-0.20S_{\text{Analyse}}
-$$
+0.20S_{\mathrm{Analyse}}
+```
 
-The weighting reflects product priorities and should eventually be empirically validated.
+This weighting places greater importance on understanding and application than on simple recall.
 
-The aggregate score is intended primarily for presentation.
+The weights are product assumptions, not validated psychometric parameters.
+
+They should therefore be tested and potentially recalibrated.
+
+The aggregate Skill Score is primarily a presentation layer.
+
+Internally, Knota should preserve the individual cognitive dimensions.
 
 ---
 
@@ -786,19 +909,28 @@ Retention        74
 Confidence       81
 ```
 
-The purpose of the Skill Map is not merely gamification.
+The Skill Map is not intended merely as gamification.
 
-It visualises the system's current belief about learner capability and the uncertainty associated with that estimate.
+It visualises the system's current estimate of learner capability together with the strength of supporting evidence.
+
+The map may also expose:
+
+- weak concepts
+- high-confidence strengths
+- uncertain areas
+- retention risks
+- prerequisite gaps
+- recently improved skills
 
 ---
 
 # 19. Skill Scan
 
-New users and new knowledge domains create a cold-start problem.
+New learners and newly introduced domains create a cold-start problem.
 
-Knota therefore introduces a diagnostic process called a **Skill Scan**.
+Knota therefore introduces an initial diagnostic process called a **Skill Scan**.
 
-An initial exploration policy may allocate assessments approximately as follows:
+A simple exploration policy may allocate assessments approximately as follows:
 
 ```text
 50% — Unmeasured concepts
@@ -807,9 +939,11 @@ An initial exploration policy may allocate assessments approximately as follows:
  5% — Strong-skill challenges
 ```
 
-The purpose is to increase the resolution of the learner model.
+The purpose of Skill Scan is not merely to produce an initial score.
 
-Example user interface:
+Its purpose is to gather information that reduces uncertainty in the learner model.
+
+The user interface may therefore present the process as:
 
 ```text
 Skill Scan
@@ -819,29 +953,37 @@ Skill Scan
 Mapping your knowledge...
 ```
 
-As evidence accumulates, the Skill Map becomes increasingly reliable.
+As evidence accumulates, the Skill Map becomes increasingly well supported.
 
 ---
 
 # 20. Assessment Policy
 
-The learner model estimates state.
+The learner model estimates the learner's state.
 
-A separate policy determines the next assessment action.
+A separate Assessment Policy decides what should be measured next.
 
-One simple priority function is:
+For concept $c$ and cognitive level $l$, a simple priority function may be:
 
-$$
+```math
 Priority(c,l)
 =
-w_1(1-S_{u,c,l})
+w_1
+\left(
+1-S_{u,c,l}
+\right)
 +
-w_2(1-Conf_{u,c,l})
+w_2
+\left(
+1-Conf_{u,c,l}
+\right)
 +
-w_3R_{u,c,l}
+w_3
+R_{u,c,l}
 +
-w_4I_c
-$$
+w_4
+I_c
+```
 
 where:
 
@@ -849,8 +991,11 @@ where:
 - $Conf_{u,c,l}$ = confidence
 - $R_{u,c,l}$ = retention risk
 - $I_c$ = concept importance
+- $w_1,w_2,w_3,w_4$ = policy weights
 
-Example policy rules:
+A concept with low skill, low confidence, high retention risk, or high importance therefore receives higher assessment priority.
+
+Example policy rules include:
 
 ```text
 if confidence is low:
@@ -867,7 +1012,7 @@ else:
     explore a related concept
 ```
 
-The separation remains:
+This separation is fundamental:
 
 ```text
 Learner Model
@@ -877,21 +1022,27 @@ Assessment Policy
 "What should the system do next?"
 ```
 
+The learner model estimates.
+
+The policy acts.
+
 ---
 
 # 21. Toward a General-Purpose Learner Model
 
 The long-term research objective of Knota is to determine whether learner behaviour across heterogeneous knowledge domains can be represented by a shared computational model.
 
-The v0 model uses manually defined parameters.
+The v0 learner model uses manually defined parameters.
 
-Future versions may replace these values with learned model parameters.
+Future versions can replace these parameters with learned functions.
 
-The learner model can then be represented as:
+A future learner model may estimate the probability that learner $u$ succeeds on question $q$ at time $t$:
 
-$$
-\boxed{
-P(Y_{u,q,t}=1)
+```math
+P
+\left(
+Y_{u,q,t}=1
+\right)
 =
 f_{\theta}
 \left(
@@ -903,12 +1054,11 @@ F_q,
 \Delta t,
 H_{u,t}
 \right)
-}
-$$
+```
 
 where:
 
-- $Y_{u,q,t}$ = future assessment outcome
+- $Y_{u,q,t}$ = observed assessment outcome
 - $Z_{u,t}$ = user-specific latent learner state
 - $e_c$ = semantic representation of concept $c$
 - $D_q$ = item difficulty
@@ -940,13 +1090,13 @@ Uncertainty
 
 The objective is not to train an independent model for every learner.
 
-Instead, a shared model learns population-level patterns while individual histories produce personalised latent learner states.
+Instead, one shared model learns patterns across the population while individual interaction histories produce personalised learner-state estimates.
 
 ---
 
-# 22. Why Concept Embeddings Matter
+# 22. Semantic Concept Representation
 
-A categorical Concept ID provides little information about an unseen concept.
+A categorical Concept ID alone contains no semantic information.
 
 For example:
 
@@ -955,19 +1105,25 @@ Concept 481
 Concept 927
 ```
 
-contains no semantic information.
+does not tell the model whether two concepts are related.
 
-A concept embedding instead provides:
+Knota therefore proposes representing concept $c$ using a semantic embedding:
 
-$$
-c \rightarrow e_c
-$$
+```math
+c
+\rightarrow
+e_c
+```
 
-with:
+where:
 
-$$
-e_c \in \mathbb{R}^{d}
-$$
+```math
+e_c
+\in
+\mathbb{R}^{d}
+```
+
+and $d$ is the dimensionality of the embedding space.
 
 For example:
 
@@ -985,24 +1141,27 @@ Standard Costing
 Semantic Representation
 ```
 
-The hypothesis is that semantic representations may support partial transfer to previously unseen concepts.
+The hypothesis is that semantic concept representations may support generalisation to concepts that were not observed during model training.
 
-However, semantic similarity does not imply identical:
+However, semantic similarity does not directly represent:
 
 - learner mastery
-- difficulty
-- prerequisite structure
-- forgetting behaviour
+- question difficulty
+- prerequisite relationships
+- forgetting rates
+- cognitive complexity
 
-Concept embeddings therefore represent only one input to the learner model.
+The concept embedding should therefore be treated as one model input rather than as a complete representation of learning behaviour.
 
 ---
 
 # 23. Hierarchical Personalisation
 
-A shared learner model should not assume that every learner or every concept behaves identically.
+A general-purpose learner model should share information across learners while still allowing individual variation.
 
-A future statistical implementation may use hierarchical structure:
+A future statistical implementation may therefore use hierarchical modelling.
+
+Conceptually:
 
 ```text
 Global Population
@@ -1016,29 +1175,35 @@ Learner
 Learner × Concept
 ```
 
-This enables **partial pooling**.
+A parameter associated with learner $u$ and concept $c$ can be represented conceptually as:
 
-When little evidence exists, estimates remain close to population priors.
-
-As evidence accumulates, estimates become increasingly personalised.
-
-Conceptually:
-
-$$
+```math
 \theta_{u,c}
 =
-\theta_{\text{global}}
+\theta_{\mathrm{global}}
 +
-\delta_{\text{domain}}
+\delta_{\mathrm{domain}}
 +
 \delta_c
 +
 \delta_u
 +
 \delta_{u,c}
-$$
+```
 
-where the correction terms represent domain-, concept-, learner-, and learner-concept-specific effects.
+where:
+
+- $\theta_{\mathrm{global}}$ = shared population baseline
+- $\delta_{\mathrm{domain}}$ = domain-specific effect
+- $\delta_c$ = concept-specific effect
+- $\delta_u$ = learner-specific effect
+- $\delta_{u,c}$ = learner-concept interaction effect
+
+This enables **partial pooling**.
+
+When little individual evidence exists, estimates remain closer to global or domain-level priors.
+
+As more evidence is collected, estimates become increasingly personalised.
 
 ---
 
@@ -1062,47 +1227,64 @@ General-Purpose Learner Model
 
 ## v0
 
+The first model uses:
+
 - manually defined parameters
-- deterministic updates
-- confidence tracking
+- deterministic learner-state updates
+- explicit confidence
 - rule-based assessment policy
+
+Its objective is interpretability and rapid validation.
 
 ## v1
 
+The model introduces:
+
 - population-level calibration
-- user-specific effects
+- learner-specific effects
 - concept-specific effects
-- item difficulty estimation
+- empirical item difficulty
 - hierarchical statistical modelling
 
 ## v2
 
+The model introduces:
+
 - semantic concept embeddings
-- cross-domain transfer
+- transfer across related concepts
+- cross-domain prediction
 - learned forgetting effects
 - learned question-format effects
-- richer interaction-history modelling
+- richer learner-history representation
 
 ## v3
 
-- shared learner model across heterogeneous domains
-- domain-generalisation evaluation
-- neural Knowledge Tracing or KARL-like architectures where appropriate
+The research target is a shared learner model capable of operating across heterogeneous domains.
+
+Potential methods include:
+
+- neural Knowledge Tracing
+- semantic Knowledge Tracing
+- transformer-based sequence models
+- KARL-like learner models
+- hybrid psychometric and neural models
 
 ---
 
-# 25. Data Model
+# 25. Structured Interaction Data
 
 Each assessment attempt generates structured evidence.
 
-A Study Attempt may contain:
+A Study Attempt may include:
 
 ```text
-User
-Concept
-Question
+User ID
+Concept ID
+Concept Embedding
+Question ID
 Question Format
-Difficulty
+Estimated Difficulty
+Calibrated Difficulty
 Cognitive Level
 Rubric Score
 Response Time
@@ -1111,11 +1293,26 @@ Evaluator Confidence
 Timestamp
 ```
 
-This interaction history forms the empirical basis for future learner-model development.
+These interactions form the empirical basis for future learner-model training and calibration.
+
+A learner history can be represented as:
+
+```math
+H_{u,t}
+=
+\left\{
+x_{u,1},
+x_{u,2},
+\dots,
+x_{u,t-1}
+\right\}
+```
+
+where each interaction $x_{u,i}$ contains assessment features and observed learner behaviour.
 
 ---
 
-# 26. Learning and MLOps Loops
+# 26. Model Improvement Loops
 
 Knota contains at least two distinct improvement loops.
 
@@ -1133,6 +1330,27 @@ Model Training
 Improved Prediction
 ```
 
+Suppose the model predicts:
+
+```math
+\hat{p}_{u,q,t}
+=
+P
+\left(
+Y_{u,q,t}=1
+\right)
+```
+
+and the observed outcome is:
+
+```math
+Y_{u,q,t}
+\in
+\{0,1\}
+```
+
+The difference between prediction and outcome provides training evidence for future models.
+
 ---
 
 ## 26.2 Assessment Calibration Loop
@@ -1149,14 +1367,18 @@ Calibration
 Improved Question Generation
 ```
 
+Generated difficulty becomes a prior rather than a permanent truth.
+
+As response data accumulates, observed item difficulty can replace or adjust the initial LLM estimate.
+
 The resulting system combines elements of:
 
 - learner modelling
 - adaptive assessment
+- psychometrics
 - MLOps
 - LLMOps
 - semantic retrieval
-- psychometrics
 
 ---
 
@@ -1166,7 +1388,7 @@ Knota draws on several established research directions.
 
 ## 27.1 Knowledge Tracing
 
-Knowledge Tracing attempts to infer latent learner state from sequences of learner interactions.
+Knowledge Tracing attempts to infer latent learner state from sequences of interactions.
 
 Relevant approaches include:
 
@@ -1174,21 +1396,52 @@ Relevant approaches include:
 - Deep Knowledge Tracing
 - semantic Knowledge Tracing
 
+Knowledge Tracing provides a conceptual basis for Knota's learner-state estimation.
+
 ---
 
 ## 27.2 Item Response Theory
 
-Item Response Theory provides a framework for jointly modelling learner ability and item difficulty.
+Item Response Theory provides a statistical framework for modelling the interaction between learner ability and item difficulty.
 
-It may be useful for future calibration of Knota assessment items.
+A simple one-parameter logistic IRT model is:
+
+```math
+P
+\left(
+Y_{u,q}=1
+\right)
+=
+\frac{
+1
+}{
+1+
+e^{-(\theta_u-b_q)}
+}
+```
+
+where:
+
+- $\theta_u$ = learner ability
+- $b_q$ = item difficulty
+
+Future versions of Knota may use IRT-like calibration for question difficulty and learner ability.
 
 ---
 
 ## 27.3 Forgetting and Memory Models
 
-Spaced-repetition and memory models provide methods for modelling retention over time.
+Human recall typically changes as a function of time.
 
-These approaches may inform Knota's future retention component.
+Knota's v0 exponential decay:
+
+```math
+e^{-\lambda \Delta t}
+```
+
+is intentionally simplistic.
+
+More sophisticated memory models may eventually replace this approximation.
 
 ---
 
@@ -1196,7 +1449,7 @@ These approaches may inform Knota's future retention component.
 
 Knota uses cognitive levels to distinguish simple recall from deeper forms of understanding and application.
 
-The taxonomy is used as an assessment-design abstraction rather than as a direct psychometric model.
+Bloom-style categories are used as assessment-design metadata rather than as a direct psychometric model.
 
 ---
 
@@ -1204,7 +1457,12 @@ The taxonomy is used as an assessment-design abstraction rather than as a direct
 
 KARL demonstrates the potential value of combining semantic representations of learning content with learner-history modelling and teaching policies.
 
-Knota extends this direction toward multidimensional assessment and heterogeneous knowledge domains.
+Knota extends this direction toward:
+
+- multidimensional skill estimation
+- arbitrary user-provided domains
+- semantic concept representations
+- adaptive assessment generation
 
 ---
 
@@ -1212,7 +1470,21 @@ Knota extends this direction toward multidimensional assessment and heterogeneou
 
 Recent research has explored learner-aware and Knowledge-Tracing-informed question generation.
 
-Knota incorporates question generation into a closed learner-state estimation loop.
+Knota incorporates question generation into a closed learner-state estimation loop:
+
+```text
+Learner State
+      ↓
+Target Selection
+      ↓
+Question Generation
+      ↓
+Response
+      ↓
+Evidence
+      ↓
+Updated Learner State
+```
 
 ---
 
@@ -1242,7 +1514,7 @@ How stable is rubric-based LLM evaluation compared with expert human grading?
 
 ## RQ6
 
-How much interaction data is required before personalised estimates outperform population priors?
+How much learner interaction data is required before personalised estimates outperform population priors?
 
 ## RQ7
 
@@ -1268,15 +1540,26 @@ Can uncertainty-aware Skill Maps improve learners' awareness of their own knowle
 
 # 29. Evaluation Strategy
 
-Knota should not be evaluated solely on engagement or user retention.
+Knota should not be evaluated solely using engagement metrics.
 
-The learner model itself requires quantitative evaluation.
+The learner model itself requires quantitative validation.
 
 ---
 
 ## 29.1 Future Response Prediction
 
-Possible metrics include:
+The model predicts:
+
+```math
+\hat{p}_{u,q,t}
+=
+P
+\left(
+Y_{u,q,t}=1
+\right)
+```
+
+Possible evaluation metrics include:
 
 - Accuracy
 - ROC-AUC
@@ -1287,47 +1570,91 @@ Possible metrics include:
 
 ## 29.2 Probability Calibration
 
+A learner model should produce calibrated probabilities.
+
 If Knota predicts:
 
-$$
+```math
 P(\text{success}) = 0.8
-$$
+```
 
-then approximately 80% of comparable assessment attempts should eventually succeed.
+for a sufficiently large set of comparable assessment events, approximately 80% of those events should result in success.
 
-Calibration may be evaluated using:
+Calibration can be evaluated using:
 
 - Expected Calibration Error
 - Brier Score
 - reliability diagrams
 
+Calibration is particularly important because Knota presents learner state probabilistically.
+
 ---
 
 ## 29.3 Cross-Domain Generalisation
 
-One key experiment is to train on several domains while holding out an unrelated domain.
+One of Knota's central experiments is to train the learner model on several knowledge domains and evaluate it on held-out domains.
 
 For example:
 
 ```text
 Training Domains
-- AI
-- Statistics
-- Finance
+
+AI
+Statistics
+Finance
 
 Held-Out Domains
-- Enterprise Software
-- Organic Chemistry
-- Networking
+
+Enterprise Software
+Organic Chemistry
+Networking
 ```
 
-Performance can then be compared between:
+Possible model comparisons include:
 
-1. global baseline
-2. domain-specific model
-3. semantic cross-domain model
+```text
+Baseline A
+Global learner model without semantic concept information
 
-This provides a direct test of the General-Purpose Learner Model hypothesis.
+Baseline B
+Domain-specific learner model
+
+Model C
+Semantic cross-domain learner model
+```
+
+If Model C performs well on previously unseen domains, this would provide evidence for the General-Purpose Learner Model hypothesis.
+
+---
+
+## 29.4 Ablation Studies
+
+The contribution of individual model inputs should also be evaluated.
+
+For example:
+
+```text
+Full Model
+Concept Embedding
++ Difficulty
++ Cognitive Level
++ Question Format
++ Time Gap
++ Interaction History
+```
+
+Compare against versions with individual variables removed.
+
+Examples:
+
+```text
+Without Concept Embedding
+Without Question Format
+Without Cognitive Level
+Without Time Gap
+```
+
+This helps determine which variables genuinely improve prediction.
 
 ---
 
@@ -1358,7 +1685,7 @@ The MVP does not require:
 - reinforcement learning
 - custom neural-network training
 - KARL implementation
-- automated Knowledge Graph construction
+- automated Knowledge Graph generation
 - universal PDF understanding
 - large-scale cross-domain model training
 
@@ -1366,19 +1693,21 @@ The MVP should primarily answer:
 
 > **Does an evidence-based, uncertainty-aware Skill Map create meaningful value for learners?**
 
+A secondary objective is to begin collecting structured Study Attempt data for future model calibration.
+
 ---
 
 # 31. Long-Term Vision
 
 Knota aims to evolve from an assessment application into a continuously updated **Personal Skill Model**.
 
-Traditional learning systems often answer questions such as:
+Traditional systems often answer:
 
 > What have you studied?
 
 or:
 
-> What should you review next?
+> What should you review?
 
 Knota aims to answer:
 
@@ -1405,7 +1734,7 @@ New Evidence
 
 If a sufficiently general learner model can be developed, Knota may eventually provide a common representation of learning state across multiple domains.
 
-The objective is not to produce a definitive measure of human knowledge.
+The objective is not to produce a definitive measurement of human knowledge.
 
 It is to produce an:
 
@@ -1427,12 +1756,14 @@ Important limitations include:
 - LLM grading reliability requires empirical evaluation
 - generated question difficulty may be unstable
 - semantic similarity does not imply equivalent learning behaviour
-- forgetting rates may differ substantially between learners and concepts
+- forgetting rates may differ substantially across learners and concepts
 - question-format effects are currently hypothetical
+- cognitive-level classification may itself contain uncertainty
 - cross-domain learner-model generalisation remains an open research question
 - Skill Scores should not initially be interpreted as absolute measures of competence
+- the v0 learner-state update does not model all dependencies between repeated assessments
 
-The purpose of Knota v0.1 is therefore not to claim a validated General-Purpose Learner Model.
+The purpose of Knota v0.1 is therefore not to claim that a validated General-Purpose Learner Model already exists.
 
 Its purpose is to define a **testable architecture and research programme** for investigating whether such a model can be developed.
 
@@ -1445,7 +1776,7 @@ Whitepaper v0.1
       ↓
 Knota MVP
       ↓
-Initial Study Attempts
+Structured Study Attempts
       ↓
 Parameter Calibration
       ↓
@@ -1457,8 +1788,14 @@ Cross-Domain Evaluation
       ↓
 Semantic Learner Model
       ↓
+General-Purpose Learner Model Experiments
+      ↓
 Preprint / Research Publication
 ```
+
+The transition between stages should be evidence-driven rather than feature-driven.
+
+In particular, advanced modelling should be introduced only after sufficient learner interaction data has been collected.
 
 ---
 
@@ -1480,10 +1817,22 @@ The initial Knota v0 model is deliberately simple and interpretable.
 
 Its purpose is to establish a baseline from which increasingly sophisticated statistical and machine-learning models can be developed.
 
-The long-term research objective is to investigate whether a shared model can represent and predict human learning behaviour across heterogeneous concepts, users, and domains.
+The long-term research objective is to investigate whether a shared model can represent and predict learning behaviour across heterogeneous concepts, learners, and domains.
+
+Knota therefore progresses conceptually from:
+
+```text
+Rule-Based Learner Model
+        ↓
+Statistical Learner Model
+        ↓
+Semantic Cross-Domain Learner Model
+        ↓
+General-Purpose Learner Model
+```
 
 In this sense, Knota is not primarily a flashcard system or quiz generator.
 
-It is an experimental framework for building a:
+It is an experimental framework for estimating:
 
-> **General-Purpose Learner Model.**
+> **What a learner can currently do, how certain that estimate is, and what evidence should be collected next.**
