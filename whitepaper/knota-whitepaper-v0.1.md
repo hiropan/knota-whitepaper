@@ -1836,3 +1836,49 @@ In this sense, Knota is not primarily a flashcard system or quiz generator.
 It is an experimental framework for estimating:
 
 > **What a learner can currently do, how certain that estimate is, and what evidence should be collected next.**
+
+# References
+
+1. Bloom, B. S., Engelhart, M. D., Furst, E. J., Hill, W. H., & Krathwohl, D. R. (1956).  
+   *Taxonomy of Educational Objectives: The Classification of Educational Goals. Handbook I: Cognitive Domain.*  
+   Longmans, Green.  
+   This work provides the cognitive-level taxonomy that informs Knota's distinction between recall, understanding, application, and analysis.
+
+2. Rasch, G. (1960).  
+   *Probabilistic Models for Some Intelligence and Attainment Tests.*  
+   Danish Institute for Educational Research, Copenhagen.  
+   This work provides foundational ideas for probabilistic modelling of learner ability and item difficulty.
+
+3. Corbett, A. T., & Anderson, J. R. (1995).  
+   “Knowledge Tracing: Modeling the Acquisition of Procedural Knowledge.”  
+   *User Modeling and User-Adapted Interaction*, 4(4), 253–278.  
+   DOI: 10.1007/BF01099821.  
+   This work is a foundational reference for Bayesian-style Knowledge Tracing and latent learner-state estimation.
+
+4. Piech, C., Spencer, J., Huang, J., Ganguli, S., Sahami, M., Guibas, L., & Sohl-Dickstein, J. (2015).  
+   “Deep Knowledge Tracing.”  
+   *Advances in Neural Information Processing Systems (NeurIPS 2015).*  
+   arXiv:1506.05908.  
+   This work demonstrates the use of recurrent neural networks for modelling learner knowledge from interaction sequences.
+
+5. Shu, M., Balepur, N., Feng, S., & Boyd-Graber, J. (2024).  
+   “KARL: Knowledge-Aware Retrieval and Representations aid Retention and Learning in Students.”  
+   *Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing (EMNLP 2024)*, 14161–14178.  
+   Association for Computational Linguistics.  
+   DOI: 10.18653/v1/2024.emnlp-main.784.  
+   KARL combines content representations, learner interaction history, retrieval, and Deep Knowledge Tracing to predict recall and support adaptive teaching policies.
+
+6. Ozyurt, Y., Feuerriegel, S., & Sachan, M. (2024).  
+   “Automated Knowledge Concept Annotation and Question Representation Learning for Knowledge Tracing.”  
+   arXiv:2410.01727.  
+   This work proposes LLM-based knowledge-concept annotation and semantic question representations for improving Knowledge Tracing models.
+
+7. Gao, X., Wu, Q., Ding, L., Liao, Q. V., Qian, K., Xu, Y., Chang, S., & Zhang, Y. (2026).  
+   “KT4EQG: Personalized Exercise Question Generation via Knowledge Tracing.”  
+   arXiv:2605.23933.  
+   This work uses a Knowledge Tracing model to select learning targets and guide personalised LLM-based exercise generation.
+
+8. Embretson, S. E., & Reise, S. P. (2000).  
+   *Item Response Theory for Psychologists.*  
+   Lawrence Erlbaum Associates.  
+   This work provides a broader psychometric foundation for modelling learner ability and item difficulty.
