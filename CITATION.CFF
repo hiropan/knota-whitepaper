@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use or reference Knota, please cite this whitepaper."
+title: "Knota: A General-Purpose AI-Based Skill Assessment and Learner Modelling Framework"
+type: generic
+version: 0.1.0
+date-released: 2026-09-02
+
+authors:
+  - family-names: "Hirose"
+    given-names: "Yuhei"
+
+abstract: >
+  Knota is an experimental AI-native framework for estimating learner
+  capability through AI-generated assessments, rubric-based semantic
+  evaluation, multidimensional learner-state estimation, uncertainty
+  modelling, and adaptive assessment policies. The long-term research
+  objective is to investigate whether a shared learner model can
+  generalise across heterogeneous knowledge domains.
+
+keywords:
+  - learner modelling
+  - knowledge tracing
+  - adaptive learning
+  - artificial intelligence
+  - large language models
+  - educational technology
+  - psychometrics
+  - adaptive assessment
+  - skill assessment
+
+license: CC-BY-4.0
+
+repository-code: "https://github.com/hiropan/knota-whitepaper"
+
+preferred-citation:
+  type: generic
+  title: "Knota: A General-Purpose AI-Based Skill Assessment and Learner Modelling Framework"
+  version: 0.1.0
+  year: 2026
+  authors:
+    - family-names: "Hirose"
+      given-names: "Yuhei"
